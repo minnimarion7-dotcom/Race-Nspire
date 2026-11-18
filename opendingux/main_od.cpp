@@ -1,6 +1,6 @@
-#include  <sys/time.h>
-
+#include <sys/time.h>
 #include "shared.h"
+
 unsigned int m_Flag;
 unsigned int interval;
 
@@ -93,24 +93,25 @@ void graphics_paint(void) {
 		
 	if (SDL_MUSTLOCK(actualScreen)) SDL_UnlockSurface(actualScreen);
 	SDL_Flip(actualScreen);
-
 }
 
 void initSDL(void) {
-	if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0) {
+	// TI-Nspire has no sound hardware, so initialize Video only
+	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
 		fprintf(stderr, "Couldn't initialize SDL: %s\n",SDL_GetError());
 		exit(1);
 	}
 	atexit(SDL_Quit);
 
-	actualScreen = SDL_SetVideoMode(320, 240, 16, SDL_DOUBLEBUF | SDL_HWSURFACE );
+	// Use SDL_SWSURFACE for TI-Nspire CX / CX II
+	actualScreen = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE);
 	if(actualScreen == NULL) {
 		fprintf(stderr, "Couldn't set video mode: %s\n", SDL_GetError());
 		exit(1);
 	}
 	SDL_ShowCursor(SDL_DISABLE);
 
-    screen = SDL_CreateRGBSurface (actualScreen->flags,
+    screen = SDL_CreateRGBSurface (SDL_SWSURFACE,
                                 actualScreen->w,
                                 actualScreen->h,
                                 actualScreen->format->BitsPerPixel,
@@ -144,23 +145,20 @@ void initSDL(void) {
 
 
 int main(int argc, char *argv[]) {
-	unsigned int index;
 	double period;
 
-	// Get init file directory & name
-	getcwd(current_conf_app, MAX__PATH);
-	sprintf(current_conf_app,"%s//race.cfg",current_conf_app);
+	// Save config file in the same folder with .tns extension for Nspire
+	strcpy(current_conf_app, "./race.cfg.tns");
 	
-	// Init graphics & sound
+	// Init graphics
 	initSDL();
-	sound_system_init();
 	
 	m_Flag = GF_MAINUI;
 	system_loadcfg(current_conf_app);
 
 	SDL_WM_SetCaption("race", NULL);
 
-    //load rom file via args if a rom path is supplied
+    // Load rom file via args if a rom path is supplied by Ndless
 	if(argc > 1) {
 		strcpy(gameName,argv[1]);
 		m_Flag = GF_GAMEINIT;
@@ -169,16 +167,13 @@ int main(int argc, char *argv[]) {
 	while (m_Flag != GF_GAMEQUIT) {
 		switch (m_Flag) {
 			case GF_MAINUI:
-				SDL_PauseAudio(1);
 				screen_showtopmenu();
 				if (cartridge_IsLoaded()) {
-					SDL_PauseAudio(0);
 					nextTick = SDL_UXTimerRead() + interval;
 				}
 				break;
 
 			case GF_GAMEINIT:
-			    system_sound_chipreset();	//Resets chips
 				handleInputFile(gameName);
 				InitInput(NULL);
 				m_Flag = GF_GAMERUNNING;
@@ -189,7 +184,6 @@ int main(int argc, char *argv[]) {
 				period = period * 1000000;
 				interval = (int) period;
 				nextTick = SDL_UXTimerRead() + interval;
-				SDL_PauseAudio(0);
 				break;
 		
 			case GF_GAMERUNNING:
@@ -208,7 +202,6 @@ int main(int argc, char *argv[]) {
 				break;
 		}
 	}
-	SDL_PauseAudio(1);
 	
 	// Free memory
 	SDL_FreeSurface(layerbackgrey);
@@ -217,8 +210,7 @@ int main(int argc, char *argv[]) {
 	SDL_FreeSurface(screen);
 	SDL_FreeSurface(actualScreen);
 	
-	// Free memory
-	SDL_QuitSubSystem(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
+	SDL_QuitSubSystem(SDL_INIT_VIDEO);
 	
 	exit(0);
 }
@@ -284,15 +276,17 @@ unsigned int crc_table[256] = {
   0x2d02ef8dL
 };
 
-unsigned long crc32 (unsigned int crc, const unsigned char *buf, unsigned int len) {
+unsigned int crc32(unsigned int crc, const unsigned char *buf, unsigned int len)
+{
   if (buf == 0) return 0L;
   crc = crc ^ 0xffffffffL;
-  while (len >= 8) {
-    DO8(buf);
-    len -= 8;
-  }
+  while (len >= 8)
+    {
+      DO8(buf);
+      len -= 8;
+    }
   if (len) do {
-    DO1(buf);
-  } while (--len);
+      DO1(buf);
+    } while (--len);
   return crc ^ 0xffffffffL;
 }

@@ -3,11 +3,14 @@ CXX = nspire-g++
 LD = nspire-ld
 GENZEHN = genzehn
 
-CFLAGS = -O3 -Wall -D__NSPIRE__ -I. -Isrc -Isrc/cz80 -Isrc/drz80
+CFLAGS = -O3 -Wall -D__NSPIRE__ -I. -Iemu -Iopendingux
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
 LDFLAGS = -lSDL -lm -lz
 
-OBJS = src/main.o src/neopop.o src/mem.o src/gfx.o src/sound.o src/input.o src/rom.o src/state.o src/tlcs900h.o src/z80.o
+# Automatically grab all .cpp and .c files in emu and opendingux
+CPP_SRCS = $(wildcard emu/*.cpp opendingux/*.cpp)
+C_SRCS = $(wildcard emu/*.c opendingux/*.c)
+OBJS = $(CPP_SRCS:.cpp=.o) $(C_SRCS:.c=.o)
 
 all: race.tns
 
